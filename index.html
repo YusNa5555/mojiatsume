@@ -337,7 +337,8 @@ function cat(){
  const up=()=>{if(down==='wand'){wand.visible=false;A.mode='idle';A.t=1}else if(down==='pet'){A.mode='idle';A.t=1.5}down=''};
  el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
  function spawnB(){const g=new THREE.Group(),ws=[];[-1,1].forEach(s=>{const p=new THREE.Group();mk(new THREE.CircleGeometry(.22,10),s<0?0xff7ac8:0x7ad7ff,p,s*.2,0,0);g.add(p);ws.push(p)});mk(CY,0x333333,g,0,0,0,.03,.2,.03).rotation.x=Math.PI/2;g.position.set(0,1.8,0);g.scale.setScalar(1.8);S.add(g);bfly={g,ws,t:0,life:16};toast('\ud83e\udd8b \u3061\u3087\u3046\u3061\u3087\u304c \u304d\u305f\u3088\uff01 \u30bf\u30c3\u30d7\uff01')}
- function catchB(){const q=bfly.g.position;fx('\u2728',2,q.x,q.z);S.remove(bfly.g);bfly=null;const n=Math.random()<.4?2:1;st.coins+=n;save();dots();A.hop=1;okSnd();meow(1.2);toast('\ud83e\udd8b \u3064\u304b\u307e\u3048\u305f\uff01 +\ud83e\ude99'+n)}
+ function catchB(){if(bfly.locked)return;bfly.locked=true;bfly.life=99;if(A.mode==='sleep')A.t=0;A.mode='pounce';A.pt=2.2;toast('🦋 ねこが とびかかった！')}
+ function doCatch(){const q=bfly.g.position;fx('\u2728',2,q.x,q.z);S.remove(bfly.g);bfly=null;const n=Math.random()<.4?2:1;st.coins+=n;save();dots();A.hop=1;okSnd();meow(1.2);toast('\ud83e\udd8b \u3064\u304b\u307e\u3048\u305f\uff01 +\ud83e\ude99'+n)}
  const clock=new THREE.Clock();let sec=0,sv=0;
  function loop(){if(!el.isConnected){R.dispose();try{R.forceContextLoss()}catch(e){}return}
   const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime,s=sc();A.wk=0;
@@ -349,6 +350,7 @@ function cat(){
   else if(m==='sleep'){A.t-=dt;A.zz-=dt;if(A.zz<=0){fx('\ud83d\udca4');A.zz=1.8}if(A.t<=0){A.mode='idle';A.t=1.5}}
   else if(m==='groom'){A.t-=dt;if(A.t<=0){A.mode='idle';A.t=1.5}}
   else if(m==='pet'){}
+  else if(m==='pounce'){if(!bfly){A.mode='idle';A.t=1}else{A.pt-=dt;const q=bfly.g.position;if(go(q.x,q.z,sp*3.2,dt,.6*s)||A.pt<=0){A.swat=1;A.hop=1;doCatch();A.mode='idle';A.t=1.2}}}
   else if(m==='follow'){go(A.wx,A.wz,sp*1.8,dt,.55*s);A.cd-=dt;if(Math.hypot(A.wx-cg.position.x,A.wz-cg.position.z)<.75*s&&A.cd<=0){A.swat=1;A.cd=.7;C.fun=Math.min(100,C.fun+3)}}
   else if(m==='eatgo'){const f=foods[0];if(!f){A.mode='idle';A.t=1}else if(go(f.x,f.z,sp*1.4,dt,.5*s)&&f.landed){A.mode='eat';A.t=1.8}}
   else if(m==='eat'){A.t-=dt;const f0=foods[0];if(f0)f0.m.scale.setScalar(Math.max(.15,A.t/1.8));if(A.t<=0){const f=foods.shift();if(f)S.remove(f.m);A.mode='idle';A.t=1.5;A.hop=1;meow();fx('\ud83d\udc95')}}
@@ -375,7 +377,7 @@ function cat(){
    if(o.tmp){o.life-=dt;if(o.life<=0){S.remove(o.m);toys.splice(i,1)}}}
   for(const f of foods){if(!f.landed){f.y-=dt*5;if(f.y<=.05){f.y=.05;f.landed=true;f.m.rotation.set(0,0,0)}else f.m.rotation.y+=dt*4;f.m.position.y=f.y}}
   A.bt-=dt;if(!bfly&&A.bt<=0){spawnB();A.bt=rnd(25,45)}
-  if(bfly){const b=bfly;b.t+=dt*.7;b.life-=dt;b.g.position.set(2.6*Math.sin(b.t*.8),1.7+.5*Math.sin(b.t*1.7),.9+1.1*Math.cos(b.t*.55));b.g.rotation.y=Math.cos(b.t*.8)*.8;b.ws[0].rotation.y=Math.sin(b.t*22)*.9;b.ws[1].rotation.y=-Math.sin(b.t*22)*.9;if(b.life<=0){S.remove(b.g);bfly=null}}
+  if(bfly){const b=bfly;if(!b.locked)b.t+=dt*.7;b.life-=dt;if(!b.locked)b.g.position.set(2.6*Math.sin(b.t*.8),1.7+.5*Math.sin(b.t*1.7),.9+1.1*Math.cos(b.t*.55));b.g.rotation.y=Math.cos(b.t*.8)*.8;b.ws[0].rotation.y=Math.sin(b.t*22)*.9;b.ws[1].rotation.y=-Math.sin(b.t*22)*.9;if(b.life<=0){S.remove(b.g);bfly=null}}
   sec+=dt;if(sec>.5){sec=0;sv+=.5;info(true);if(sv>=5){sv=0;C.ts=Date.now();save()}}
   const want=A.mode==='sleep'?'':C.hun<45?'\ud83d\udc1f':C.fun<45?'\ud83e\udde6':'';
   if(want){const[bx,by]=proj(cg.position.x+.3,2.3*s,cg.position.z);bub.style.left=(bx-24)+'px';bub.style.top=(by-30+Math.sin(t*4)*3)+'px';bub.style.display='block';if(A.lastB!==want){bub.textContent=want;A.lastB=want;meow(1.1)}}else{bub.style.display='none';A.lastB=''}
