@@ -81,11 +81,34 @@ let st={mast:{},col:[]},sound=true,lock=false,order=[],qi=0,ac=null;
 try{const s=JSON.parse(localStorage.getItem("moji1")||"null");if(s&&s.mast&&s.col)st=s}catch(e){}
 st.coins=st.coins||0;st.lang=st.lang||"ja";const COST=15;
 function save(){try{localStorage.setItem("moji1",JSON.stringify(st))}catch(e){}}
-function say(t){if(!sound||!window.speechSynthesis)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang=(/^[A-Za-z]/.test(t)?"en-US":"ja-JP");u.rate=.8;u.pitch=1.25;speechSynthesis.speak(u)}catch(e){}}
+// 文字・単語の読み上げ。端末に登録された音声から、対象言語に合う声を選ぶ。
+const speechVoices=()=>{try{return window.speechSynthesis?window.speechSynthesis.getVoices():[]}catch(e){return []}};
+function chooseVoice(lang){
+ const voices=speechVoices();
+ const same=voices.filter(v=>(v.lang||"").toLowerCase().startsWith(lang.toLowerCase().split("-")[0]));
+ // 対象言語の音声を優先し、利用可能なら端末の標準音声を使う。
+ return same.find(v=>v.default)||same.find(v=>/natural|enhanced|premium|高品質|拡張/i.test(v.name||""))||same[0]||null;
+}
+function say(t){
+ if(!sound||!window.speechSynthesis||!t)return;
+ try{
+  const synth=window.speechSynthesis;
+  synth.cancel();
+  const lang=/^[A-Za-z]/.test(t.trim())?"en-US":"ja-JP";
+  const u=new SpeechSynthesisUtterance(t);
+  u.lang=lang;
+  const voice=chooseVoice(lang);if(voice)u.voice=voice;
+  // 子どもが聞き取りやすいよう、少しゆっくりめに読む。
+  u.rate=.78;u.pitch=1.08;u.volume=1;
+  synth.speak(u);
+ }catch(e){}
+}
+if(window.speechSynthesis){window.speechSynthesis.getVoices();window.speechSynthesis.addEventListener?.("voiceschanged",()=>window.speechSynthesis.getVoices());}
 function tone(fr,d=.15,t=0){if(!sound)return;try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=fr;o.type="triangle";g.gain.setValueAtTime(.2,ac.currentTime+t);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+t+d);o.connect(g).connect(ac.destination);o.start(ac.currentTime+t);o.stop(ac.currentTime+t+d)}catch(e){}}
 const okSnd=()=>{tone(660,.12);tone(880,.12,.1);tone(1175,.25,.2)};
 const ngSnd=()=>tone(220,.2);
-$("#mute").onclick=()=>{sound=!sound;$("#mute").textContent=sound?"🔊":"🔇"};
+$("#mute").onclick=()=>{sound=!sound;$("#mute").textContent=sound?"🔊":"🔇";if(!sound&&window.speechSynthesis)window.speechSynthesis.cancel();};
+$("#mute").title="読み上げ・効果音のオン／オフ";
 const sh=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]);
 function shelf(newE){$("#shelf").innerHTML=st.col.map((e,i)=>`<span class="${newE&&i==st.col.length-1?"new":""}">${e}</span>`).join("")||'<span style="font-size:16px;opacity:.7">ここに いきものが たまるよ</span>'}
 function dots(){$("#coin").textContent="🪙 "+st.coins;$("#dots").innerHTML=[0,1,2,3,4].map(i=>`<div class="dot ${i<qi?"on":i==qi?"now":""}"></div>`).join("")}
